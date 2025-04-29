@@ -28,6 +28,7 @@ int main(void) {
     }
     exit(-1);
     */
+    /*
     for (double energy = 0.001; energy < 10.0; energy *= 1.01) {
         State s = electron.selectStateOnIsoEnergySurface(energy);
         cout << energy << ' ';
@@ -39,6 +40,7 @@ int main(void) {
         cout << endl;
     }
     exit(-1);
+    */
 
 
 
@@ -53,7 +55,7 @@ int main(void) {
 
 
 
-    Vector3 efield(1.0e4, 0.0, 0.0); // (V/m)
+    Vector3 efield(1.0e5, 0.0, 0.0); // (V/m)
 
     const int START_MEASUREMENT = 1.0e-12; // (s)
 
@@ -68,7 +70,7 @@ int main(void) {
         State state = electron.selectStateOnIsoEnergySurface(THERMAL_ENERGY);
 	int scattering_mechanism = SELF_SCATTERING;
 
-        for (int step = 0; step < 10000000; ++step) {
+        for (int step = 0; step < 100000; ++step) {
 
             state = electron.flightFree(TIMESTEP, efield, state);
 
