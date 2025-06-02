@@ -17,6 +17,8 @@ State FBMC::selectStateAfterImpactIonization(const State initial_state) {
     }
     State final_state = selectStateOnIsoEnergySurface(secondary_carrier_energy);
 
+    final_state.r = initial_state.r;
+
     return final_state;
 }
 

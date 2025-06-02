@@ -251,7 +251,10 @@ State FBMC::selectStateAfterPhononScattering(const int eta, const bool isAbsorpt
         return initial_state;
     }
 
-    return carrier_.getStateInTetrahedron(final_energy, it, ib);
+    State final_state = carrier_.getStateInTetrahedron(final_energy, it, ib);
+    final_state.r = initial_state.r;
+
+    return final_state;
 }
 
 double FBMC::calculatePhononScatteringRate(const int eta, const bool isAbsorption, const State initial_state) {

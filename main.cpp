@@ -14,12 +14,6 @@ int main(void) {
 
     FBMC electron("Si_PARAM.txt", "Si_ECB.txt", "Si_PH.txt", TEMPERATURE, sharedRng);
 
-
-
-
-
-
-
     /*
     for (int loop = 0; loop < 1000; ++loop) {
         State s = electron.selectStateOnIsoEnergySurface(0.04);
@@ -43,18 +37,22 @@ int main(void) {
     */
 
 
+    Vector3 efield(100.0e5, 0.0, 0.0); // (V/m)
+    int scattering_mechanism;
+    double time = 0.0;
+    State state = electron.selectStateOnIsoEnergySurface(THERMAL_ENERGY);
+    for (int step = 0; step < 1000000; ++step) {
+        state = electron.flightFree(TIMESTEP, efield, state);
+        state = electron.scatter(TIMESTEP, state, scattering_mechanism);
+	if (step % 1000 == 0) {
+	    cout << time << ' ' << state.r.x << ' ' << state.r.y << ' ' << state.r.z << endl;
+	}
+        time += TIMESTEP;
+    }
+    return 0;
 
 
-
-
-
-
-
-
-
-
-
-
+    /*
     Vector3 efield(1.0e5, 0.0, 0.0); // (V/m)
 
     const int START_MEASUREMENT = 1.0e-12; // (s)
@@ -96,7 +94,8 @@ int main(void) {
 	     << endl;
 
 	efield.x *= 2.0;
-    }
+    }	
+    */
 
     return 0;
 }
