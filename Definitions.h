@@ -97,4 +97,5 @@ struct State {
     Vector3 k = Vector3(0.0, 0.0, 0.0);
     int n = 0;
     Vector3 r = Vector3(0.0, 0.0, 0.0);
+    double charge = -1.0;
 };

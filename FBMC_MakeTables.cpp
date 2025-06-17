@@ -6,6 +6,12 @@ using namespace std;
 static int NE;
 
 void FBMC::constructDOSTables(string band_filename) {
+    if (carrier_.getMinimumEnergy() < -DELTAE_DOSMAX_) {
+        cerr << "# Error in constructDOSTables(),\n";
+        cerr << "#   ===> Negative band energy is in: " << band_filename << endl;
+        exit(EXIT_FAILURE);
+    }
+
 // Make a table of maximum DOS at a given energy
     const double emax = carrier_.getMaximumEnergy();
     NE = static_cast<int>(emax / DELTAE_DOSMAX_);

@@ -127,12 +127,12 @@ EnergyBand::EnergyBand(string band_filename, mt19937& rng) : mt(rng) {
     }
     }
 
-    cout << "# Look-up tables have been successfully created.\n";
+    cout << "# Look-up tables for energy band have been successfully created.\n";
 }
 
 
 
-double EnergyBand::loadBandFile(std::string band_filename) {
+void EnergyBand::loadBandFile(std::string band_filename) {
 
     ifstream fin_band(band_filename, ios::in);
     if (!fin_band) {
@@ -173,9 +173,9 @@ double EnergyBand::loadBandFile(std::string band_filename) {
     const int IKMIN_Y = KMIN.y / (KMAX.y - KMIN.y) * NK;
     const int IKMIN_Z = KMIN.z / (KMAX.z - KMIN.z) * NK;
 
-    emax = -1.0e10;
+    emax_ = -1.0e10;
     emax_per_band.resize(NB, -1.0e10);
-    double emin = 1.0e10;
+    emin_ = 1.0e10;
     double k2max = 0.0;
     for (int ix = 0; ix < NK + 1; ++ix) {
     for (int iy = 0; iy < NK + 1; ++iy) {
@@ -199,19 +199,19 @@ double EnergyBand::loadBandFile(std::string band_filename) {
             double e;
             fin_band >> e;
             grid_energy[ikx - IKMIN_X][iky - IKMIN_Y][ikz - IKMIN_Z][n] = e;
-	    if (e > emax) emax = e;
+	    if (e > emax_) emax_ = e;
             if (e > emax_per_band[n]) emax_per_band[n] = e;
-	    if (e < emin) emin = e;
+	    if (e < emin_) emin_ = e;
         }
     }
     }
     }
-    cout << "# Maximum energy (eV) = " << emax << endl;
-    cout << "# Minimum energy (eV) = " << emin << endl;
+    cout << "# Maximum energy (eV) = " << emax_ << endl;
+    cout << "# Minimum energy (eV) = " << emin_ << endl;
 
     fin_band.close();
 
-    return emax;
+    return;
 }
 
 
@@ -499,7 +499,7 @@ array<double, 4> EnergyBand::getTetrahedronVertexEnergies(int nt, int nb) {
 
 
 
-State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const int nb) {
+State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const int nb, const Vector3 r, const double charge) {
 
     uniform_real_distribution<double> urand(0.0, 1.0);
 
@@ -551,6 +551,7 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
     if (energy < e1) {
         cerr << "# Error in EnergyBand::getStateInTetrahedron()\n";
         cerr << "#   ===> Selected triangle does not contain given energy (energy < e1).\n";
+        cerr << "# energy = " << energy << ", e1 = " << e1 << endl;
         exit(EXIT_FAILURE);
     }
     else if (energy < e2) {
@@ -627,6 +628,8 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
     s.k.y = (k.y + grid_y[v1]) * (KMAX.y - KMIN.y) / NK + KMIN.y;
     s.k.z = (k.z + grid_z[v1]) * (KMAX.z - KMIN.z) / NK + KMIN.z;
     s.n = nb;
+    s.r = r;
+    s.charge = charge;
 
     return s;
 }

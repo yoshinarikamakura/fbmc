@@ -6,12 +6,11 @@
  SRCS = main.cpp FBMC.cpp FBMC_MakeTables.cpp FBMC_PhononScattering.cpp FBMC_ImpactIonization.cpp EnergyBand.cpp
 
  CC++ = g++
-# C++FLAGS = -Og -Wall -Wextra -std=c++17
- C++FLAGS = -O3
+ C++FLAGS = -Og -Wall -Wextra -std=c++17
+# C++FLAGS = -O3
 
  PROGRAM = a.out
  OBJS = $(SRCS:.cpp=.o)
-
 
 all	: $(OBJS)
 	$(CC++) $(C++FLAGS) $(OBJS) -o $(PROGRAM)

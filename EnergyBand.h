@@ -41,11 +41,12 @@ public:
     inline double getNumberOfTetrahedra() const { return NT; }
     inline double getUnitOfWaveVector() const { return K_UNIT; }
     inline double getFactorForDensityOfStates() const { return FACTOR_DOS; }
-    inline double getMaximumEnergy() const { return emax; }
+    inline double getMinimumEnergy() const { return emin_; }
+    inline double getMaximumEnergy() const { return emax_; }
     inline std::vector<double> getMaximumEnergyPerBand() const { return emax_per_band; }
     inline Vector3 getMaximumWaveVector() const { return vkmax; }
 
-    State getStateInTetrahedron(const double energy, const int nt, const int nb);
+    State getStateInTetrahedron(const double energy, const int nt, const int nb, const Vector3 r, const double charge);
     double getTetrahedronDOS(const int nt, const int n, const double e);
     std::array<double, 4> getTetrahedronVertexEnergies(const int nt, const int nb);
     Vector3 getWaveVectorDifference(const State state, const int it);
@@ -54,7 +55,9 @@ private:
     std::mt19937& mt;
 //    const std::string TABLE_DIRECTORY_NAME = "./TABLE/";
     double K_UNIT;
-    double emax;
+
+    double emin_, emax_;
+
     std::vector<double> emax_per_band;
     Vector3 vkmax;
     double FACTOR_DOS;
@@ -101,5 +104,5 @@ private:
     std::vector<std::vector<std::vector<std::vector<double>>>> grid_energy;
 
     double getDOS(const double energy);
-    double loadBandFile(std::string band_filename);
+    void loadBandFile(std::string band_filename);
 };

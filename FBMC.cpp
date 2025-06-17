@@ -7,19 +7,18 @@ FBMC::FBMC(string param_filename, string band_filename, string phonon_filename, 
 : mt_(rng),
   carrier_(TABLE_DIRECTORY_NAME_ + band_filename, rng),
   phonon_(TABLE_DIRECTORY_NAME_ + phonon_filename, rng) {
-
     constructDOSTables(band_filename);
-
     constructPhononScatteringTables(param_filename, band_filename, temperature);
-
     cout << "# Look-up tables have been successfully created.\n";
+
+    THERMAL_ENERGY_ = BOLTZMANN * temperature / ELEMENTARY_CHARGE;
 }
 
 
 
 State FBMC::flightFree(const double dt, const Vector3 efield, State initial_state) {
     State state = initial_state;
-    state.k = state.k + efield * FACTOR_FREE_FLIGHT_ * dt;
+    state.k = state.k - efield * state.charge * FACTOR_FREE_FLIGHT_ * dt;
     state.k = state.k.reduce_FCC();
     Vector3 v = carrier_.getVelocity(state);
     state.r = state.r + v * dt;
@@ -28,7 +27,7 @@ State FBMC::flightFree(const double dt, const Vector3 efield, State initial_stat
 
 
 
-State FBMC::scatter(const double dt, State initial_state, int& scattering_mechanism) {
+State FBMC::scatter(const double dt, State initial_state, int& scattering_mechanism, array<double, 2>& eh_pair_energies) {
     uniform_real_distribution<double> urand(0.0, 1.0);
 
     const int NETA = phonon_.getNumberOfBands();
@@ -59,7 +58,7 @@ State FBMC::scatter(const double dt, State initial_state, int& scattering_mechan
 
     sum += getImpactIonizationRate(initial_state);
     if (sum > rgamma) {
-        State final_state = selectStateAfterImpactIonization(initial_state);
+        State final_state = selectStateAfterImpactIonization(initial_state, eh_pair_energies);
 	scattering_mechanism = IMPACT_IONIZATION;
         return final_state;
     }
@@ -71,7 +70,7 @@ State FBMC::scatter(const double dt, State initial_state, int& scattering_mechan
 
 
 
-State FBMC::selectStateOnIsoEnergySurface(const double energy) {
+State FBMC::selectStateOnIsoEnergySurface(const double energy, const Vector3 r, const double charge) {
 
     uniform_real_distribution<double> urand(0.0, 1.0);
 
@@ -131,5 +130,5 @@ State FBMC::selectStateOnIsoEnergySurface(const double energy) {
 	exit(EXIT_FAILURE);
     }
 
-    return carrier_.getStateInTetrahedron(energy, it, ib);
+    return carrier_.getStateInTetrahedron(energy, it, ib, r, charge);
 }

@@ -1,101 +1,229 @@
+#include <forward_list>
+#include <fstream>
 #include <iostream>
 #include <random>
 #include "Definitions.h"
 #include "FBMC.h"
-using namespace std;
 
-int main(void) {
+// Charge of carriers (ELEMENTARY_CHARGE) 
+const double CHARGE_OF_ELECTRON = -1.0;
+const double CHARGE_OF_HOLE = 1.0;
 
-    mt19937 sharedRng(42);
+// Lattice temperature (K)
+const double TEMPERATURE = 300.0;
 
-    const double TEMPERATURE = 300.0; // (K)
-    const double TIMESTEP = 1.0e-15; // (s)
-    const double THERMAL_ENERGY = BOLTZMANN * TEMPERATURE / ELEMENTARY_CHARGE; // (eV)
+// Dielectric constant of Si () 
+const double DIELECTRIC_CONSTANT = 11.7;
 
-    FBMC electron("Si_PARAM.txt", "Si_ECB.txt", "Si_PH.txt", TEMPERATURE, sharedRng);
+// Domain of the device with a rectangular shape (m)
+const Vector3 RMIN(0.0, 0.0, 0.0);
+const Vector3 RMAX(1.0e-3, 1.0e-6, 1.0e-6);
 
-    /*
-    for (int loop = 0; loop < 1000; ++loop) {
-        State s = electron.selectStateOnIsoEnergySurface(0.04);
-        double energy = electron.getEnergy(s);
-        cout << s.k.x << ' ' << s.k.y << ' ' << s.k.z << ' ' << s.n << ' ' << energy << endl;
+// Doping density in the drift layer (1/m/m/m)
+const double ND = 1.0e22;
+
+// Maximum number of carriers
+const int NUMBER_OF_MAX_CARRIERS = 1000;
+
+// Electric field vector in a one-sided junction (V/m)
+inline Vector3 getElectricField(const Vector3 r, const double WX) {
+    // Electric field at x = 0 (V/m)
+    const double EMAX = ELEMENTARY_CHARGE * ND * WX / (DIELECTRIC_CONSTANT * EPSILON_0);
+
+    if (r.x > RMIN.x && r.x < RMIN.x + WX) {
+        return Vector3((1.0 - (r.x - RMIN.x) / WX) * EMAX, 0.0, 0.0);
     }
-    exit(-1);
-    */
-    /*
-    for (double energy = 0.001; energy < 10.0; energy *= 1.01) {
-        State s = electron.selectStateOnIsoEnergySurface(energy);
-        cout << energy << ' ';
-        for (int kind = 0; kind < 6; ++kind) {
-            double abs = electron.getPhononScatteringRate(kind, true, s);
-            double emi = electron.getPhononScatteringRate(kind, false, s);
-            cout << abs << ' ' << emi << ' ';
+    else {
+        return 0.0;
+    }
+}
+
+// Save the carrier positions to files
+void takeSnapShot(const std::forward_list <State> carrier_list, const int label) {
+    std::string FILENAME_e = "./outputs/electrons" + std::to_string(label) + ".txt";
+    std::string FILENAME_h = "./outputs/holes" + std::to_string(label) + ".txt";
+    std::ofstream fout_e(FILENAME_e);
+    std::ofstream fout_h(FILENAME_h);
+    if (fout_e.is_open() && fout_h.is_open()) {
+        for (auto it = carrier_list.begin(); it != carrier_list.end(); ++it) {
+            if ((*it).charge < 0.0) {
+                // Electron
+                fout_e << (*it).r.x << ' ' << (*it).r.y << ' ' << (*it).r.z << std::endl;
+	    }
+            else {
+                // Hole
+                fout_h << (*it).r.x << ' ' << (*it).r.y << ' ' << (*it).r.z << std::endl;
+	    }
         }
-        cout << endl;
     }
-    exit(-1);
-    */
+    else {
+        std::cerr << "Cannot open file.\n";
+	exit(EXIT_FAILURE);
+    }
+}
 
 
-    Vector3 efield(100.0e5, 0.0, 0.0); // (V/m)
-    int scattering_mechanism;
+
+int main(int argc, char*argv[]) {
+    if (argc != 4) {
+        std::cerr << "Usage: ./a.out <depletion layer voltage> <initial energy> <seed>\n";
+	return 1;
+    }
+
+    double argv_VW = atof(argv[1]);
+    std::cout << "# Depletion layer voltage (V) = " << argv_VW << std::endl;
+
+    // Deplection layer width (m)
+    const double WX = sqrt(2.0 * DIELECTRIC_CONSTANT * EPSILON_0 * argv_VW / (ELEMENTARY_CHARGE * ND));
+    std::cout << "# Depletion layer width (m) = " << WX << std::endl;
+
+    double argv_INITIAL_ELECTRON_ENERGY = atof(argv[2]);
+    const double THERMAL_ENERGY = TEMPERATURE * BOLTZMANN / ELEMENTARY_CHARGE;
+    if (argv_INITIAL_ELECTRON_ENERGY < 1.5 * THERMAL_ENERGY) {
+        argv_INITIAL_ELECTRON_ENERGY = 1.5 * THERMAL_ENERGY;
+    }
+    std::cout << "# Initial electron energy (eV) = " << argv_INITIAL_ELECTRON_ENERGY << std::endl;
+
+    int argv_seed = atoi(argv[3]);
+    std::cout << "# Random number seed = " << argv_seed << std::endl;
+
+    // Initializing random number generator
+    std::mt19937 sharedRng(argv_seed);
+
+    FBMC electron("Si_ELECTRON_PARAM.txt", "Si_ECB.txt", "Si_PH.txt", TEMPERATURE, sharedRng);
+    FBMC hole("Si_HOLE_PARAM.txt", "Si_EVB.txt", "Si_PH.txt", TEMPERATURE, sharedRng);
+
+    // Initial electron position (m)
+    const double initial_x = (WX - RMIN.x) * 0.05 + RMIN.x;
+    const double initial_y = (RMIN.y + RMAX.y) * 0.5;
+    const double initial_z = (RMIN.z + RMAX.z) * 0.5;
+    
+    State state = electron.selectStateOnIsoEnergySurface(argv_INITIAL_ELECTRON_ENERGY,
+                                                         Vector3(initial_x, initial_y, initial_z),
+                                                         CHARGE_OF_ELECTRON);
+    std::forward_list <State> carrier_list;
+    carrier_list.push_front(state);
+
+    // Time step (s)
+    const double TIMESTEP = 1.0e-15;
+
     double time = 0.0;
-    State state = electron.selectStateOnIsoEnergySurface(THERMAL_ENERGY);
-    for (int step = 0; step < 1000000; ++step) {
-        state = electron.flightFree(TIMESTEP, efield, state);
-        state = electron.scatter(TIMESTEP, state, scattering_mechanism);
-	if (step % 1000 == 0) {
-	    cout << time << ' ' << state.r.x << ' ' << state.r.y << ' ' << state.r.z << endl;
+    int label_for_snapshot = 0;
+
+    // Loop for time
+    for (int step = 0; step < 100000; ++step) {
+	if (carrier_list.empty()) {
+            std::cout << "# No carriers.\n";
+            break;
 	}
-        time += TIMESTEP;
-    }
-    return 0;
 
+	int number_of_electrons = 0;
+	int number_of_holes = 0;
+	auto it = carrier_list.before_begin();
 
-    /*
-    Vector3 efield(1.0e5, 0.0, 0.0); // (V/m)
+        // Loop for carriers
+	while (next(it) != carrier_list.end()) {
 
-    const int START_MEASUREMENT = 1.0e-12; // (s)
+	    // Carrier state from the list
+            State state = *next(it); 
 
-    cout << "# Electric Field (V/m), Drift Velocity (m/sec), Mean Energy (eV), Alpha (1/m)\n";
-    for (int i = 0; i < 10; ++i) {
+            Vector3 efield = getElectricField(state.r, WX);
 
-        double time_integration = 0.0;
-        double drift_length = 0.0;
-        double energy_integration = 0.0;
-        double number_of_impact_ionization = 0.0;
+	    // proceed a step
+            int scattering_mechanism;
+            std::array<double, 2> eh_pair_energies;
+	    if (state.charge < 0.0) {
+                // Electron
+                ++number_of_electrons;
+                state = electron.flightFree(TIMESTEP, efield, state);
+                state = electron.scatter(TIMESTEP, state, scattering_mechanism, eh_pair_energies);
+	    }
+	    else {
+                // Hole
+                ++number_of_holes;
+                state = hole.flightFree(TIMESTEP, efield, state);
+                state = hole.scatter(TIMESTEP, state, scattering_mechanism, eh_pair_energies);
+	    }
 
-        State state = electron.selectStateOnIsoEnergySurface(THERMAL_ENERGY);
-	int scattering_mechanism = SELF_SCATTERING;
+	    // Annihilation at x-boundaries
+	    if (state.r.x < RMIN.x) {
+                carrier_list.erase_after(it);
+		continue;
+	    }
+	    else if (state.r.x > WX || state.r.x > RMAX.x) {
+                carrier_list.erase_after(it);
+		continue;
+	    }
 
-        for (int step = 0; step < 100000; ++step) {
-
-            state = electron.flightFree(TIMESTEP, efield, state);
-
-            state = electron.scatter(TIMESTEP, state, scattering_mechanism);
-
-            if (time_integration > START_MEASUREMENT) {
-                Vector3 v = electron.getVelocity(state);
-                double energy = electron.getEnergy(state);
-                drift_length += v.x * TIMESTEP;
-                energy_integration += energy * TIMESTEP;
-		if (scattering_mechanism == IMPACT_IONIZATION) {
-                    number_of_impact_ionization += 1.0;
-		}
+	    // Mirror reflextion at y-boundaries
+            if (state.r.y < RMIN.y) {
+                state.r.y = 2.0 * RMIN.y - state.r.y;
+                state.k.y = -state.k.y;
+            }
+            else if (state.r.y > RMAX.y) {
+                state.r.y = 2.0 * RMAX.y - state.r.y;
+                state.k.y = -state.k.y;
             }
 
-            time_integration += TIMESTEP;
+	    // Mirror reflextion at z-boundaries
+            if (state.r.z < RMIN.z) {
+                state.r.z = 2.0 * RMIN.z - state.r.z;
+                state.k.z = -state.k.z;
+            }
+            else if (state.r.z > RMAX.z) {
+                state.r.z = 2.0 * RMAX.z - state.r.z;
+                state.k.z = -state.k.z;
+            }
+
+	    // Create an e-h pair
+	    if (scattering_mechanism == IMPACT_IONIZATION) {
+                State new_carrier0, new_carrier1;
+                if (state.charge < 0.0) {
+                    // I.I. initiated by electron
+                    new_carrier0 = hole.selectStateOnIsoEnergySurface(eh_pair_energies[0],
+                                                                      state.r,
+                                                                      CHARGE_OF_HOLE);
+                    new_carrier1 = electron.selectStateOnIsoEnergySurface(eh_pair_energies[1],
+                                                                          state.r,
+                                                                          CHARGE_OF_ELECTRON);
+		}
+		else {
+                    // I.I. initiated by hole
+                    new_carrier0 = electron.selectStateOnIsoEnergySurface(eh_pair_energies[0],
+                                                                          state.r,
+                                                                          CHARGE_OF_ELECTRON);
+                    new_carrier1 = hole.selectStateOnIsoEnergySurface(eh_pair_energies[1],
+                                                                      state.r,
+                                                                      CHARGE_OF_HOLE);
+		}
+                carrier_list.push_front(new_carrier0);
+                carrier_list.push_front(new_carrier1);
+            }
+
+	    // Update the list
+	    *next(it) = state;
+
+	    ++it;
+	}
+
+        if (step % 100 == 0) {
+            std::cout << time << ' '
+                      << number_of_electrons << ' '
+		      << number_of_holes << ' '
+                      << std::endl;
+            takeSnapShot(carrier_list, label_for_snapshot++);
         }
 
-        cout << efield.x << ' '
-             << drift_length / (time_integration - START_MEASUREMENT) << ' '
-	     << energy_integration / (time_integration - START_MEASUREMENT) << ' ' 
-	     << number_of_impact_ionization / drift_length
-	     << endl;
+	if (number_of_electrons + number_of_holes > NUMBER_OF_MAX_CARRIERS) {
+            std::cout << "# Too many carriers.\n";
+            break;
+	}
 
-	efield.x *= 2.0;
-    }	
-    */
+        time += TIMESTEP;
+    }
 
     return 0;
 }
+
+
+

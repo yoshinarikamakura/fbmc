@@ -218,6 +218,7 @@ State FBMC::selectStateAfterPhononScattering(const int eta, const bool isAbsorpt
     int loop = 0; 
     bool isSuccess = false;
     int it = 0, ib = 0;
+
     do {
         const int ir = static_cast<int>(urand(mt_) * num_candidates);
         it = candidates[ir].first;
@@ -251,15 +252,14 @@ State FBMC::selectStateAfterPhononScattering(const int eta, const bool isAbsorpt
         return initial_state;
     }
 
-    State final_state = carrier_.getStateInTetrahedron(final_energy, it, ib);
-    final_state.r = initial_state.r;
+    State final_state = carrier_.getStateInTetrahedron(final_energy, it, ib, initial_state.r, initial_state.charge);
 
     return final_state;
 }
 
 double FBMC::calculatePhononScatteringRate(const int eta, const bool isAbsorption, const State initial_state) {
     const double initial_energy = carrier_.getEnergy(initial_state); // Initial State Energy (eV)
-								    //
+
     int ief_min = 0, ief_max = 0;
     if (isAbsorption == true) { // Phonon absorption
         ief_min = static_cast<int>(initial_energy / DELTAE_MINMAX_);
@@ -326,7 +326,7 @@ void FBMC::makePhononScatteringRateTable(void) {
         double initial_energy = MINIMUM_ENERGY_FOR_SCATTERING_RATE_TABLE_ * pow(ENERGY_GEOMETRIC_RATIO, isc);
 
         // Randomly select an initial state
-        State initial_state = selectStateOnIsoEnergySurface(initial_energy);
+        State initial_state = selectStateOnIsoEnergySurface(initial_energy, Vector3(0.0, 0.0, 0.0), -1.0);
         for (int eta = 0; eta < NETA; ++eta) {
             phonon_absorption_scattering_rate_table[isc][eta] = calculatePhononScatteringRate(eta, true, initial_state);
             phonon_emission_scattering_rate_table[isc][eta] = calculatePhononScatteringRate(eta, false, initial_state);
@@ -420,9 +420,16 @@ double FBMC::getToyMatrixElementForSilicon(State phonon_state, const bool isAbso
                 break;
             default:
                 cerr << "# Error in Phonon::getToyMatrixElement()\n";
+                cerr << "#   ===> No phonon branch.\n";
                 exit(EXIT_FAILURE);
                 break;
         }
+
+	if (dp2 < 0.0) {
+            cerr << "# Error in Phonon::getToyMatrixElement()\n";
+            cerr << "#   ===> Negative dp2.\n";
+            exit(EXIT_FAILURE);
+	}
 
 	if (isAbsorption) {
             matrix_element = dp2 * bose / hw;
