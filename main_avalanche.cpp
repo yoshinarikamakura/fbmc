@@ -185,15 +185,12 @@ int main(int argc, char*argv[]) {
             int number_of_electrons = 0;
             int number_of_holes = 0;
 
-//            auto it = carrier_list.before_begin();
             auto prev = carrier_list.before_begin();
             auto curr = carrier_list.begin();
 
             // Loop for carriers
-//            while (next(it) != carrier_list.end()) {
             while (curr != carrier_list.end()) {
                 // Carrier state from the list
-//                State state = *next(it);
                 State state = *curr;
 
                 Vector3 efield = getElectricField(state.r, WX);
@@ -225,13 +222,11 @@ int main(int argc, char*argv[]) {
                         state.r.x = 2.0 * RMIN.x - state.r.x;
                         state.k.x = -state.k.x;
                     } else {
-//                        carrier_list.erase_after(it);
                         curr = carrier_list.erase_after(prev);
                         continue;
                     }
                 } else if (state.r.x > WX || state.r.x > RMAX.x) {
                     if (state.charge < 0.0) {
-//                        carrier_list.erase_after(it);
                         curr = carrier_list.erase_after(prev);
                         continue;
                     } else {
@@ -259,7 +254,6 @@ int main(int argc, char*argv[]) {
                 }
 
                 // Update the state
-//                *next(it) = state;
                 *curr = state;
 
                 // Create an e-h pair
@@ -293,7 +287,6 @@ int main(int argc, char*argv[]) {
                     ++number_of_holes;
                 }
 
-//                ++it;
                 prev = curr;
                 ++curr;
             }
@@ -303,7 +296,7 @@ int main(int argc, char*argv[]) {
                           << number_of_electrons << ' '
                           << number_of_holes << ' '
                           << std::endl;
-//                takeSnapShot(carrier_list, label_for_snapshot++);
+                takeSnapShot(carrier_list, label_for_snapshot++);
             }
 
             if (number_of_electrons + number_of_holes > NUMBER_OF_MAX_CARRIERS) {
