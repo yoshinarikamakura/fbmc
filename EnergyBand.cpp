@@ -1,11 +1,15 @@
+// Copyright (c) 2025 yoshinarikamakura
 #include "EnergyBand.h"
 #include <algorithm>
 #include <iostream>
 #include <fstream>
-using namespace std;
+#include <string>
+#include <utility>
+using std::cerr;
+using std::cout;
+using std::endl;
 
-EnergyBand::EnergyBand(string band_filename, mt19937& rng) : mt(rng) {
-
+EnergyBand::EnergyBand(std::string band_filename, std::mt19937& rng) : mt(rng) {
 // Load energy band structure from a file
     loadBandFile(band_filename);
 
@@ -17,10 +21,12 @@ EnergyBand::EnergyBand(string band_filename, mt19937& rng) : mt(rng) {
 // Number of tetrahedra
     NT = NK * NK * NK * 6;
 
-    FACTOR_DOS = (KMAX.x - KMIN.x) * (KMAX.y - KMIN.y) * (KMAX.z - KMIN.z) * K_UNIT * K_UNIT * K_UNIT
+    FACTOR_DOS = (KMAX.x - KMIN.x) * (KMAX.y - KMIN.y) * (KMAX.z - KMIN.z)
+                 * K_UNIT * K_UNIT * K_UNIT
                  / (8.0 * M_PI * M_PI * M_PI * NK * NK * NK);
 
-    FACTOR_GROUP_VELOCITY = Vector3(1.0, 1.0, 1.0) * ELEMENTARY_CHARGE * NK / ((KMAX - KMIN) * K_UNIT * HBAR);
+    FACTOR_GROUP_VELOCITY = Vector3(1.0, 1.0, 1.0) * ELEMENTARY_CHARGE * NK
+                            / ((KMAX - KMIN) * K_UNIT * HBAR);
 
 // Grid
     NG = (NK + 1) * (NK + 1) * (NK + 1);
@@ -43,7 +49,7 @@ EnergyBand::EnergyBand(string band_filename, mt19937& rng) : mt(rng) {
         grid_y[ig] = iy;
         grid_z[ig] = iz;
         grid_number[ix][iy][iz] = ig;
-	ig += 1;
+        ig += 1;
     }
     }
     }
@@ -61,14 +67,14 @@ EnergyBand::EnergyBand(string band_filename, mt19937& rng) : mt(rng) {
     for (int ix = 0; ix < NK; ++ix) {
     for (int iy = 0; iy < NK; ++iy) {
     for (int iz = 0; iz < NK; ++iz) {
-        const int v1 = grid_number[ix  ][iy  ][iz  ]; 
-        const int v2 = grid_number[ix+1][iy  ][iz  ]; 
-        const int v3 = grid_number[ix  ][iy+1][iz  ]; 
-        const int v4 = grid_number[ix+1][iy+1][iz  ]; 
-        const int v5 = grid_number[ix  ][iy  ][iz+1]; 
-        const int v6 = grid_number[ix+1][iy  ][iz+1]; 
-        const int v7 = grid_number[ix  ][iy+1][iz+1]; 
-        const int v8 = grid_number[ix+1][iy+1][iz+1]; 
+        const int v1 = grid_number[ix  ][iy  ][iz  ];
+        const int v2 = grid_number[ix+1][iy  ][iz  ];
+        const int v3 = grid_number[ix  ][iy+1][iz  ];
+        const int v4 = grid_number[ix+1][iy+1][iz  ];
+        const int v5 = grid_number[ix  ][iy  ][iz+1];
+        const int v6 = grid_number[ix+1][iy  ][iz+1];
+        const int v7 = grid_number[ix  ][iy+1][iz+1];
+        const int v8 = grid_number[ix+1][iy+1][iz+1];
 
         tetrahedron_vertex1[it] = v1;
         tetrahedron_vertex2[it] = v2;
@@ -127,14 +133,14 @@ EnergyBand::EnergyBand(string band_filename, mt19937& rng) : mt(rng) {
     }
     }
 
-    cout << "# Look-up tables for energy band have been successfully created.\n";
+    cout << "# Look-up tables for energy band"
+         << " have been successfully created.\n";
 }
 
 
 
 void EnergyBand::loadBandFile(std::string band_filename) {
-
-    ifstream fin_band(band_filename, ios::in);
+    std::ifstream fin_band(band_filename, std::ios::in);
     if (!fin_band) {
         cerr << "# Cannot open: " << band_filename << endl;
         exit(EXIT_FAILURE);
@@ -153,10 +159,12 @@ void EnergyBand::loadBandFile(std::string band_filename) {
     cout << "# Number of bands = " << NB << endl;
 
     fin_band >> KMIN.x >> KMIN.y >> KMIN.z;
-    cout << "# Domain of k-space; KMIN = " << KMIN.x << ' ' << KMIN.y << ' ' << KMIN.z << endl;
+    cout << "# Domain of k-space; KMIN = "
+         << KMIN.x << ' ' << KMIN.y << ' ' << KMIN.z << endl;
 
     fin_band >> KMAX.x >> KMAX.y >> KMAX.z;
-    cout << "# Domain of k-space; KMAX = " << KMAX.x << ' ' << KMAX.y << ' ' << KMAX.z << endl;
+    cout << "# Domain of k-space; KMAX = "
+         << KMAX.x << ' ' << KMAX.y << ' ' << KMAX.z << endl;
 
     grid_energy.resize(NK + 1);
     for (int ix = 0; ix < NK + 1; ++ix) {
@@ -186,8 +194,7 @@ void EnergyBand::loadBandFile(std::string band_filename) {
         Vector3 vk(
             static_cast<double>(ix) / NK,
             static_cast<double>(iy) / NK,
-            static_cast<double>(iz) / NK
-        );
+            static_cast<double>(iz) / NK);
         vk = vk.reduce_FCC();
         double k2 = vk.squared();
         if (k2 > k2max) {
@@ -199,9 +206,9 @@ void EnergyBand::loadBandFile(std::string band_filename) {
             double e;
             fin_band >> e;
             grid_energy[ikx - IKMIN_X][iky - IKMIN_Y][ikz - IKMIN_Z][n] = e;
-	    if (e > emax_) emax_ = e;
+            if (e > emax_) emax_ = e;
             if (e > emax_per_band[n]) emax_per_band[n] = e;
-	    if (e < emin_) emin_ = e;
+            if (e < emin_) emin_ = e;
         }
     }
     }
@@ -217,7 +224,6 @@ void EnergyBand::loadBandFile(std::string band_filename) {
 
 
 double EnergyBand::getEnergy(const State s) {
-
     int ix = static_cast<int>((s.k.x - KMIN.x) * NK / (KMAX.x - KMIN.x));
     int iy = static_cast<int>((s.k.y - KMIN.y) * NK / (KMAX.y - KMIN.y));
     int iz = static_cast<int>((s.k.z - KMIN.z) * NK / (KMAX.z - KMIN.z));
@@ -226,9 +232,13 @@ double EnergyBand::getEnergy(const State s) {
     if (iy == NK) iy = NK - 1;
     if (iz == NK) iz = NK - 1;
 
-    if (ix < 0 || iy < 0 || iz < 0 || ix > NK - 1 || iy > NK - 1 || iz > NK - 1) {
+    if (ix < 0 || iy < 0 || iz < 0 ||
+        ix > NK - 1 || iy > NK - 1 || iz > NK - 1) {
         cerr << "# Error in getEnergy():\n";
-        cerr << "# kx, ky, kz = " << s.k.x << ", " << s.k.y << ", " << s.k.z << endl;
+        cerr << "# kx, ky, kz = "
+             << s.k.x << ", "
+             << s.k.y << ", "
+             << s.k.z << endl;
         cerr << "# ix, iy, iz = " << ix << ", " << iy << ", " << iz << endl;
         exit(EXIT_FAILURE);
     }
@@ -250,8 +260,7 @@ double EnergyBand::getEnergy(const State s) {
             b = e011 - e001;
             c = e101 - e100;
             d = e100 + e001 - e101;
-        }
-        else {
+        } else {
             if (x + y + z < 1.0) {
                 // type1
                 const double e000 = grid_energy[ix  ][iy  ][iz  ][s.n];
@@ -262,8 +271,7 @@ double EnergyBand::getEnergy(const State s) {
                 b = e010 - e000;
                 c = e001 - e000;
                 d = e000;
-            }
-            else {
+            } else {
                 // type3
                 const double e100 = grid_energy[ix+1][iy  ][iz  ][s.n];
                 const double e010 = grid_energy[ix  ][iy+1][iz  ][s.n];
@@ -275,8 +283,7 @@ double EnergyBand::getEnergy(const State s) {
                 d = e010 + e001 - e011;
             }
         }
-    }
-        else {
+    } else {
         if (x + z < 1.0) {
             // type5
             const double e100 = grid_energy[ix+1][iy  ][iz  ][s.n];
@@ -287,8 +294,7 @@ double EnergyBand::getEnergy(const State s) {
             b = e110 - e100;
             c = e011 - e010;
             d = e100 + e010 - e110;
-        }
-        else {
+        } else {
             if (x + y + z < 2.0) {
                 // type4
                 const double e011 = grid_energy[ix  ][iy+1][iz+1][s.n];
@@ -299,8 +305,7 @@ double EnergyBand::getEnergy(const State s) {
                 b = e110 - e100;
                 c = e101 - e100;
                 d = 2.0 * e100 + e011 - e110 - e101;
-            }
-            else {
+            } else {
                 // type6
                 const double e110 = grid_energy[ix+1][iy+1][iz  ][s.n];
                 const double e101 = grid_energy[ix+1][iy  ][iz+1][s.n];
@@ -320,7 +325,6 @@ double EnergyBand::getEnergy(const State s) {
 
 
 Vector3 EnergyBand::getVelocity(const State s) {
-
     int ix = static_cast<int>((s.k.x - KMIN.x) * NK / (KMAX.x - KMIN.x));
     int iy = static_cast<int>((s.k.y - KMIN.y) * NK / (KMAX.y - KMIN.y));
     int iz = static_cast<int>((s.k.z - KMIN.z) * NK / (KMAX.z - KMIN.z));
@@ -329,9 +333,13 @@ Vector3 EnergyBand::getVelocity(const State s) {
     if (iy == NK) iy = NK - 1;
     if (iz == NK) iz = NK - 1;
 
-    if (ix < 0 || iy < 0 || iz < 0 || ix > NK - 1 || iy > NK - 1 || iz > NK - 1) {
+    if (ix < 0 || iy < 0 || iz < 0 ||
+        ix > NK - 1 || iy > NK - 1 || iz > NK - 1) {
         cerr << "# Error in getVelocity():\n";
-        cerr << "# kx, ky, kz = " << s.k.x << ", " << s.k.y << ", " << s.k.z << endl;
+        cerr << "# kx, ky, kz = "
+             << s.k.x << ", "
+             << s.k.y << ", "
+             << s.k.z << endl;
         cerr << "# ix, iy, iz = " << ix << ", " << iy << ", " << iz << endl;
         exit(EXIT_FAILURE);
     }
@@ -352,8 +360,7 @@ Vector3 EnergyBand::getVelocity(const State s) {
             v.x = e101 - e001;
             v.y = e011 - e001;
             v.z = e101 - e100;
-        }
-        else {
+        } else {
             if (x + y + z < 1.0) {
                 // type1
                 const double e000 = grid_energy[ix  ][iy  ][iz  ][s.n];
@@ -363,8 +370,7 @@ Vector3 EnergyBand::getVelocity(const State s) {
                 v.x = e100 - e000;
                 v.y = e010 - e000;
                 v.z = e001 - e000;
-            }
-            else {
+            } else {
                 // type3
                 const double e100 = grid_energy[ix+1][iy  ][iz  ][s.n];
                 const double e010 = grid_energy[ix  ][iy+1][iz  ][s.n];
@@ -375,8 +381,7 @@ Vector3 EnergyBand::getVelocity(const State s) {
                 v.z = e011 - e010;
             }
         }
-    }
-    else {
+    } else {
         if (x + z < 1.0) {
             // type5
             const double e100 = grid_energy[ix+1][iy  ][iz  ][s.n];
@@ -386,8 +391,7 @@ Vector3 EnergyBand::getVelocity(const State s) {
             v.x = e110 - e010;
             v.y = e110 - e100;
             v.z = e011 - e010;
-        }
-        else {
+        } else {
             if (x + y + z < 2.0) {
                 // type4
                 const double e011 = grid_energy[ix  ][iy+1][iz+1][s.n];
@@ -397,8 +401,7 @@ Vector3 EnergyBand::getVelocity(const State s) {
                 v.x = e110 + e101 - e100 - e011;
                 v.y = e110 - e100;
                 v.z = e101 - e100;
-            }
-            else {
+            } else {
                 // type6
                 const double e110 = grid_energy[ix+1][iy+1][iz  ][s.n];
                 const double e101 = grid_energy[ix+1][iy  ][iz+1][s.n];
@@ -417,12 +420,11 @@ Vector3 EnergyBand::getVelocity(const State s) {
 
 
 double EnergyBand::getDOS(const double e) {
-
     double sum = 0.0;
     for (int nt = 0; nt < NT; ++nt) {
         for (int n = 0; n < NB; ++n) {
             sum += getTetrahedronDOS(nt, n, e);
-	}
+        }
     }
 
     return sum * FACTOR_DOS;
@@ -430,8 +432,9 @@ double EnergyBand::getDOS(const double e) {
 
 
 
-double EnergyBand::getTetrahedronDOS(const int nt, const int n, const double e) {
-
+double EnergyBand::getTetrahedronDOS(const int nt,
+                                     const int n,
+                                     const double e) {
     const int v1 = tetrahedron_vertex1[nt];
     const int v2 = tetrahedron_vertex2[nt];
     const int v3 = tetrahedron_vertex3[nt];
@@ -441,10 +444,10 @@ double EnergyBand::getTetrahedronDOS(const int nt, const int n, const double e) 
     double e3 = grid_energy[grid_x[v3]][grid_y[v3]][grid_z[v3]][n];
     double e4 = grid_energy[grid_x[v4]][grid_y[v4]][grid_z[v4]][n];
 
-    array<double, 4> arr = { e1, e2, e3, e4 };
+    std::array<double, 4> arr = { e1, e2, e3, e4 };
 
     // Sort: e1 < e2 < e3 < e4
-    sort(arr.begin(), arr.end());
+    std::sort(arr.begin(), arr.end());
 
     e1 = arr[0];
     e2 = arr[1];
@@ -454,22 +457,18 @@ double EnergyBand::getTetrahedronDOS(const int nt, const int n, const double e) 
     double dos;
     if (e < e1) {
         dos = 0.0;
-    }
-    else if (e < e2) {
+    } else if (e < e2) {
         dos = 0.5 * (e - e1) * (e - e1) / ((e2 - e1) * (e3 - e1) * (e4 - e1));
-    }
-    else if (e < e3) {
+    } else if (e < e3) {
         const double a = e - e1;
         const double a2 = e2 - e1;
         const double a3 = e3 - e1;
         const double a4 = e4 - e1;
         dos = 0.5 * ((a2 - a3 - a4) * a * a + 2.0 * a3 * a4 * a - a2 * a3 * a4)
               / (a3 * a4 * (a3 - a2) * (a4 - a2));
-    }
-    else if (e < e4) {
+    } else if (e < e4) {
         dos = 0.5 * (e4 - e) * (e4 - e) / ((e4 - e1) * (e4 - e2) * (e4 - e3));
-    }
-    else {
+    } else {
         dos = 0.0;
     }
 
@@ -478,30 +477,32 @@ double EnergyBand::getTetrahedronDOS(const int nt, const int n, const double e) 
 
 
 
-array<double, 4> EnergyBand::getTetrahedronVertexEnergies(int nt, int nb) {
-
+std::array<double, 4> EnergyBand::getTetrahedronVertexEnergies(int nt, int nb) {
     const int v1 = tetrahedron_vertex1[nt];
     const int v2 = tetrahedron_vertex2[nt];
     const int v3 = tetrahedron_vertex3[nt];
     const int v4 = tetrahedron_vertex4[nt];
 
-    array<double, 4> e;
+    std::array<double, 4> e;
 
     e[0] = grid_energy[grid_x[v1]][grid_y[v1]][grid_z[v1]][nb];
     e[1] = grid_energy[grid_x[v2]][grid_y[v2]][grid_z[v2]][nb];
     e[2] = grid_energy[grid_x[v3]][grid_y[v3]][grid_z[v3]][nb];
     e[3] = grid_energy[grid_x[v4]][grid_y[v4]][grid_z[v4]][nb];
 
-    sort(e.begin(), e.end());
+    std::sort(e.begin(), e.end());
 
     return e;
 }
 
 
 
-State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const int nb, const Vector3 r, const double charge) {
-
-    uniform_real_distribution<double> urand(0.0, 1.0);
+State EnergyBand::getStateInTetrahedron(const double energy,
+                                        const int nt,
+                                        const int nb,
+                                        const Vector3 r,
+                                        const double charge) {
+    std::uniform_real_distribution<double> urand(0.0, 1.0);
 
     int v1 = tetrahedron_vertex1[nt];
     int v2 = tetrahedron_vertex2[nt];
@@ -513,15 +514,15 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
     double e3 = grid_energy[grid_x[v3]][grid_y[v3]][grid_z[v3]][nb];
     double e4 = grid_energy[grid_x[v4]][grid_y[v4]][grid_z[v4]][nb];
 
-    array<pair<double, int>, 4> pairs = {
-        make_pair(e1, v1),
-        make_pair(e2, v2),
-        make_pair(e3, v3),
-        make_pair(e4, v4)
+    std::array<std::pair<double, int>, 4> pairs = {
+        std::make_pair(e1, v1),
+        std::make_pair(e2, v2),
+        std::make_pair(e3, v3),
+        std::make_pair(e4, v4)
     };
 
     // Sort by e
-    sort(pairs.begin(), pairs.end());
+    std::sort(pairs.begin(), pairs.end());
 
     e1 = pairs[0].first; v1 = pairs[0].second;
     e2 = pairs[1].first; v2 = pairs[1].second;
@@ -531,30 +532,27 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
     const Vector3 k21(
         grid_x[v2] - grid_x[v1],
         grid_y[v2] - grid_y[v1],
-        grid_z[v2] - grid_z[v1]
-    );
+        grid_z[v2] - grid_z[v1]);
 
     const Vector3 k31(
         grid_x[v3] - grid_x[v1],
         grid_y[v3] - grid_y[v1],
-        grid_z[v3] - grid_z[v1]
-    );
+        grid_z[v3] - grid_z[v1]);
 
     const Vector3 k41(
         grid_x[v4] - grid_x[v1],
         grid_y[v4] - grid_y[v1],
-        grid_z[v4] - grid_z[v1]
-    );
+        grid_z[v4] - grid_z[v1]);
 
     Vector3 k;
 
     if (energy < e1) {
         cerr << "# Error in EnergyBand::getStateInTetrahedron()\n";
-        cerr << "#   ===> Selected triangle does not contain given energy (energy < e1).\n";
+        cerr << "#   ===> Selected triangle does not"
+             << " contain given energy (energy < e1).\n";
         cerr << "# energy = " << energy << ", e1 = " << e1 << endl;
         exit(EXIT_FAILURE);
-    }
-    else if (energy < e2) {
+    } else if (energy < e2) {
         const double phi21 = (energy - e1) / (e2 - e1);
         const double phi31 = (energy - e1) / (e3 - e1);
         const double phi41 = (energy - e1) / (e4 - e1);
@@ -568,8 +566,7 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
             r2 = 1.0 - r2;
         }
         k = a * (1.0 - r1 - r2) + b * r1 + c * r2;
-    }
-    else if (energy < e3) {
+    } else if (energy < e3) {
         const double phi42 = (energy - e2) / (e4 - e2);
         const double phi32 = (energy - e2) / (e3 - e2);
         const double phi31 = (energy - e1) / (e3 - e1);
@@ -585,8 +582,10 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
         const Vector3 cd = d - c;
         const Vector3 cb = b - c;
 
-        const double abd2 = ad.squared() * ab.squared() - ad.squared() * ad.squared();
-        const double bcd2 = cd.squared() * cb.squared() - cd.squared() * cd.squared();
+        const double abd2 = ad.squared() * ab.squared()
+                          - ad.squared() * ad.squared();
+        const double bcd2 = cd.squared() * cb.squared()
+                          - cd.squared() * cd.squared();
         const double r0 = urand(mt);
         double r1 = urand(mt);
         double r2 = urand(mt);
@@ -597,12 +596,10 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
         const double pr_abd2 = sqrt(abd2) / (sqrt(abd2) + sqrt(bcd2));
         if (r0 < pr_abd2) {
             k = a * (1.0 - r1 - r2) + b * r1 + d * r2;
-        }
-        else {
+        } else {
             k = b * (1.0 - r1 - r2) + c * r1 + d * r2;
         }
-    }
-    else if (energy < e4) {
+    } else if (energy < e4) {
         const double phi42 = (energy - e2) / (e4 - e2);
         const double phi43 = (energy - e3) / (e4 - e3);
         const double phi41 = (energy - e1) / (e4 - e1);
@@ -616,10 +613,10 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
             r2 = 1.0 - r2;
         }
         k = a * (1.0 - r1 - r2) + b * r1 + c * r2;
-    }
-    else {
+    } else {
         cerr << "# Error in EnergyBand::getStateInTetrahedron()\n";
-        cerr << "#   ===> Selected triangle does not contain given energy (energy > e3).\n";
+        cerr << "#   ===> Selected triangle does not"
+             << " contain given energy (energy > e3).\n";
         exit(EXIT_FAILURE);
     }
 
@@ -636,8 +633,8 @@ State EnergyBand::getStateInTetrahedron(const double energy, const int nt, const
 
 
 
-Vector3 EnergyBand::getWaveVectorDifference(const State initial_state, const int it) {
-
+Vector3 EnergyBand::getWaveVectorDifference(const State initial_state,
+                                            const int it) {
     Vector3 initial_cube = (initial_state.k - KMIN) / (KMAX - KMIN);
     initial_cube = (initial_cube * NK).floor();
 

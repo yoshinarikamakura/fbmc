@@ -1,24 +1,37 @@
+// Copyright (c) 2025 yoshinarikamakura
 #include "FBMC.h"
 #include <iostream>
+#include <string>
+#include <utility>
+#include <vector>
 #include "EnergyBand.h"
-using namespace std;
+using std::cerr;
+using std::cout;
+using std::endl;
 
-FBMC::FBMC(string param_filename, string band_filename, string phonon_filename, double temperature, mt19937& rng)
-: mt_(rng),
-  carrier_(TABLE_DIRECTORY_NAME_ + band_filename, rng),
-  phonon_(TABLE_DIRECTORY_NAME_ + phonon_filename, rng) {
+
+
+FBMC::FBMC(std::string param_filename,
+           std::string band_filename,
+           std::string phonon_filename,
+           double temperature,
+           std::mt19937& rng)
+               : mt_(rng),
+                 carrier_(TABLE_DIRECTORY_NAME_ + band_filename, rng),
+                 phonon_(TABLE_DIRECTORY_NAME_ + phonon_filename, rng) {
     constructDOSTables(band_filename);
     constructPhononScatteringTables(param_filename, band_filename, temperature);
     cout << "# Look-up tables have been successfully created.\n";
-
     THERMAL_ENERGY_ = BOLTZMANN * temperature / ELEMENTARY_CHARGE;
 }
 
 
 
-State FBMC::flightFree(const double dt, const Vector3 efield, State initial_state) {
+State FBMC::flightFree(const double dt,
+                       const Vector3 efield,
+                       State initial_state) {
     State state = initial_state;
-    state.k = state.k - efield * state.charge * FACTOR_FREE_FLIGHT_ * dt;
+    state.k = state.k + efield * state.charge * FACTOR_FREE_FLIGHT_ * dt;
     state.k = state.k.reduce_FCC();
     Vector3 v = carrier_.getVelocity(state);
     state.r = state.r + v * dt;
@@ -27,22 +40,25 @@ State FBMC::flightFree(const double dt, const Vector3 efield, State initial_stat
 
 
 
-State FBMC::scatter(const double dt, State initial_state, int& scattering_mechanism, array<double, 2>& eh_pair_energies) {
-    uniform_real_distribution<double> urand(0.0, 1.0);
+State FBMC::scatter(const double dt,
+                    State initial_state,
+                    int& scattering_mechanism,
+                    std::array<double, 2>& eh_pair_energies) {
+    std::uniform_real_distribution<double> urand(0.0, 1.0);
 
     const int NETA = phonon_.getNumberOfBands();
     double rgamma = urand(mt_) / dt;
-    
     bool isAbsorption;
     double sum = 0.0;
     for (int eta = 0; eta < NETA; ++eta) {
-
         isAbsorption = false;
         // Phonon Emission Scattering
         sum += getPhononScatteringRate(eta, isAbsorption, initial_state);
         if (sum > rgamma) {
-            State final_state = selectStateAfterPhononScattering(eta, isAbsorption, initial_state);
-	    scattering_mechanism = PHONON_EMISSION + eta;
+            State final_state = selectStateAfterPhononScattering(eta,
+                                                                 isAbsorption,
+                                                                 initial_state);
+            scattering_mechanism = PHONON_EMISSION + eta;
             return final_state;
         }
 
@@ -50,36 +66,40 @@ State FBMC::scatter(const double dt, State initial_state, int& scattering_mechan
         // Phonon Absorption Scattering
         sum += getPhononScatteringRate(eta, isAbsorption, initial_state);
         if (sum > rgamma) {
-            State final_state = selectStateAfterPhononScattering(eta, isAbsorption, initial_state);
-	    scattering_mechanism = PHONON_ABSORPTION + eta;
+            State final_state = selectStateAfterPhononScattering(eta,
+                                                                 isAbsorption,
+                                                                 initial_state);
+            scattering_mechanism = PHONON_ABSORPTION + eta;
             return final_state;
         }
     }
 
     sum += getImpactIonizationRate(initial_state);
     if (sum > rgamma) {
-        State final_state = selectStateAfterImpactIonization(initial_state, eh_pair_energies);
-	scattering_mechanism = IMPACT_IONIZATION;
+        State final_state = selectStateAfterImpactIonization(initial_state,
+                                                             eh_pair_energies);
+        scattering_mechanism = IMPACT_IONIZATION;
         return final_state;
     }
 
     // Self-scattering
-    scattering_mechanism = SELF_SCATTERING; 
+    scattering_mechanism = SELF_SCATTERING;
     return initial_state;
 }
 
 
 
-State FBMC::selectStateOnIsoEnergySurface(const double energy, const Vector3 r, const double charge) {
-
-    uniform_real_distribution<double> urand(0.0, 1.0);
+State FBMC::selectStateOnIsoEnergySurface(const double energy,
+                                          const Vector3 r,
+                                          const double charge) {
+    std::uniform_real_distribution<double> urand(0.0, 1.0);
 
     const int ie = static_cast<int>(energy / DELTAE_MINMAX_);
     const int ie_dosmax = static_cast<int>(energy / DELTAE_DOSMAX_);
     const int ie1_min = (ie > NE41_MINMAX_ - 1) ? ie - (NE41_MINMAX_ - 1) : 0;
     const int ie1_max = (ie < NE1_MINMAX_) ? ie : NE1_MINMAX_ - 1;
 
-    vector<pair<int, int>> candidates;
+    std::vector<std::pair<int, int>> candidates;
     size_t total = 0;
     for (int ie1 = ie1_min; ie1 <= ie1_max; ++ie1) {
         int ie41_min = ie - ie1;
@@ -114,20 +134,20 @@ State FBMC::selectStateOnIsoEnergySurface(const double energy, const Vector3 r, 
         int ir = static_cast<int>(urand(mt_) * num_candidates);
         it = candidates[ir].first;
         ib = candidates[ir].second;
-        if (carrier_.getTetrahedronDOS(it, ib, energy) > dosmax_[ie_dosmax] * urand(mt_)) {
+        if (carrier_.getTetrahedronDOS(it, ib, energy)
+                > dosmax_[ie_dosmax] * urand(mt_)) {
             isSuccess = true;
-        }
-	else {
+        } else {
             isSuccess = false;
-	}
-	loop += 1;
+        }
+        loop += 1;
     } while (loop < INFINITE_LOOP_THRESHOLD_ && !isSuccess);
 
     if (!isSuccess) {
         cerr << "# Error in FBMC::selectStateOnIsoEnergySurface(),\n";
         cerr << "#     ===> Infinite loop.\n";
         cerr << "# Energy [eV] = " <<  energy << endl;
-	exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     return carrier_.getStateInTetrahedron(energy, it, ib, r, charge);

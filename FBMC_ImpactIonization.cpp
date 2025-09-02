@@ -1,10 +1,16 @@
+// Copyright (c) 2025 yoshinarikamakura
 #include "FBMC.h"
 #include <iostream>
-using namespace std;
+using std::cerr;
+using std::endl;
 
-State FBMC::selectStateAfterImpactIonization(const State initial_state, array<double, 2>& eh_pair_energies) {
+State FBMC::selectStateAfterImpactIonization(
+          const State initial_state,
+          std::array<double, 2>& eh_pair_energies) {
     const double initial_energy = carrier_.getEnergy(initial_state);
-    double secondary_carrier_energy1, secondary_carrier_energy2, secondary_carrier_energy3;
+    double secondary_carrier_energy1;
+    double secondary_carrier_energy2;
+    double secondary_carrier_energy3;
 
     if (initial_energy > ETHII_) {
         // Secondary carrier with the same polarity
@@ -14,25 +20,30 @@ State FBMC::selectStateAfterImpactIonization(const State initial_state, array<do
         secondary_carrier_energy2 = AII2_ * initial_energy + BII2_;
 
         // Secondary carrier with the same polarity
-        secondary_carrier_energy3 = initial_energy - secondary_carrier_energy1 - secondary_carrier_energy2 - ETHII_;
+        secondary_carrier_energy3 = initial_energy
+                                    - secondary_carrier_energy1
+                                    - secondary_carrier_energy2
+                                    - EGAP_;
 
-	if (secondary_carrier_energy3 < 0.0) {
-//            cerr << "# Error in selectStateAfterImpactIonization(),\n";
-//            cerr << "#   ===> Energy concervation is violated.\n";
-//            cerr << "# charge = " << initial_state.charge << endl;
-//            cerr << "# initial_energy = " << initial_energy << endl;
-//            exit(EXIT_FAILURE);
+        if (secondary_carrier_energy3 < 0.0) {
+            cerr << "# Warning in selectStateAfterImpactIonization(),\n";
+            cerr << "#   ===> Energy concervation is violated.\n";
+            cerr << "# charge = " << initial_state.charge << endl;
+            cerr << "# initial_energy = " << initial_energy << endl;
+            // exit(EXIT_FAILURE);
             secondary_carrier_energy3 = THERMAL_ENERGY_;
-	}
-    }
-    else {
+        }
+    } else {
         cerr << "# Error in selectStateAfterImpactIonization(),\n";
         cerr << "#   ===> Initial energy is less than ionization threshold.\n";
         cerr << "# initial_energy = " << initial_energy << endl;
         exit(EXIT_FAILURE);
     }
 
-    State final_state = selectStateOnIsoEnergySurface(secondary_carrier_energy1, initial_state.r, initial_state.charge);
+    State final_state =
+        selectStateOnIsoEnergySurface(secondary_carrier_energy1,
+                                      initial_state.r,
+                                      initial_state.charge);
     eh_pair_energies = {secondary_carrier_energy2, secondary_carrier_energy3};
 
     return final_state;

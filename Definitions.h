@@ -1,8 +1,11 @@
+// Copyright (c) 2025 yoshinarikamakura
 #pragma once
 #include <cmath>
 
-// Physical constants from NIST
-// http://physics.nist.gov/cuu/Constants/
+// Mathematical constants
+constexpr double PI = 3.14159265358979323846;
+
+// Physical constants
 
 // Speed of light in vacuum (m/sec)
 constexpr double SPEED_OF_LIGHT = 299792458.0e+00;
@@ -30,7 +33,9 @@ constexpr int IMPACT_IONIZATION = 200;
 struct Vector3 {
     double x, y, z;
 
-    constexpr Vector3(double vx = 0.0, double vy = 0.0, double vz = 0.0) : x(vx), y(vy), z(vz) {}
+    explicit constexpr Vector3(
+        double vx = 0.0, double vy = 0.0, double vz = 0.0)
+        : x(vx), y(vy), z(vz) {}
 
     Vector3 operator+(const Vector3& other) const {
         return Vector3(x + other.x, y + other.y, z + other.z);
@@ -71,13 +76,14 @@ struct Vector3 {
     }
 
     Vector3 reduce_FCC() const {
-	double rx = x;
-	double ry = y;
-	double rz = z;
+        double rx = x;
+        double ry = y;
+        double rz = z;
         double absx = fabs(x);
         double absy = fabs(y);
         double absz = fabs(z);
-        if (absx > 1.0 || absy > 1.0 || absz > 1.0 || absx + absy + absz > 1.5) {
+        if (absx > 1.0 || absy > 1.0 || absz > 1.0 ||
+            absx + absy + absz > 1.5) {
             // Out of 1st Brillouin Zone
             double gx = round(x * 0.5) * 2.0;
             double gy = round(y * 0.5) * 2.0;
@@ -87,7 +93,7 @@ struct Vector3 {
                 gy = round(y * 0.5 - 0.5) * 2.0 + 1.0;
                 gz = round(z * 0.5 - 0.5) * 2.0 + 1.0;
             }
-	    rx -= gx; ry -= gy; rz -= gz;
+            rx -= gx; ry -= gy; rz -= gz;
         }
         return Vector3(rx, ry, rz);
     }

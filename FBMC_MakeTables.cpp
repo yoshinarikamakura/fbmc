@@ -1,22 +1,26 @@
+// Copyright (c) 2025 yoshinarikamakura
 #include "FBMC.h"
 #include <fstream>
 #include <iostream>
-using namespace std;
+#include <string>
+#include <utility>
+using std::cerr;
+using std::cout;
+using std::endl;
 
-static int NE;
-
-void FBMC::constructDOSTables(string band_filename) {
+void FBMC::constructDOSTables(std::string band_filename) {
     if (carrier_.getMinimumEnergy() < -DELTAE_DOSMAX_) {
         cerr << "# Error in constructDOSTables(),\n";
-        cerr << "#   ===> Negative band energy is in: " << band_filename << endl;
+        cerr << "#   ===> Negative band energy is in: "
+             << band_filename << endl;
         exit(EXIT_FAILURE);
     }
 
 // Make a table of maximum DOS at a given energy
     const double emax = carrier_.getMaximumEnergy();
-    NE = static_cast<int>(emax / DELTAE_DOSMAX_);
-    cout << "# Size of dosmax table = " << NE << endl;
-    dosmax_.resize(NE);
+    SIZE_OF_DOSMAX_TABLE_ = static_cast<int>(emax / DELTAE_DOSMAX_);
+    cout << "# Size of dosmax table = " << SIZE_OF_DOSMAX_TABLE_ << endl;
+    dosmax_.resize(SIZE_OF_DOSMAX_TABLE_);
     loadDOSmax(band_filename);
     cout << "# dosmax_ table has been loaded.\n";
 
@@ -27,7 +31,7 @@ void FBMC::constructDOSTables(string band_filename) {
     int ie41_max = 0;
     for (int ib = 0; ib < NB; ++ib) {
     for (int it = 0; it < NT; ++it) {
-	array<double, 4> e = carrier_.getTetrahedronVertexEnergies(it, ib);
+        std::array<double, 4> e = carrier_.getTetrahedronVertexEnergies(it, ib);
         const int ie1 = static_cast<int>(e[0] / DELTAE_MINMAX_);
         const int ie41 = static_cast<int>(e[3] / DELTAE_MINMAX_) - ie1 + 1;
         if (ie1 > ie1_max) ie1_max = ie1;
@@ -47,7 +51,7 @@ void FBMC::constructDOSTables(string band_filename) {
 
     for (int ib = 0; ib < NB; ++ib) {
     for (int it = 0; it < NT; ++it) {
-	array<double, 4> e = carrier_.getTetrahedronVertexEnergies(it, ib);
+        std::array<double, 4> e = carrier_.getTetrahedronVertexEnergies(it, ib);
         const int ie1 = static_cast<int>(e[0] / DELTAE_MINMAX_);
         const int ie41 = static_cast<int>(e[3] / DELTAE_MINMAX_) - ie1 + 1;
         if (ie1 >= NE1_MINMAX_) {
@@ -60,39 +64,38 @@ void FBMC::constructDOSTables(string band_filename) {
             cerr << "#   ===> Use larger NE41_MINMAX.\n";
             exit(EXIT_FAILURE);
         }
-        minmax_[ie1][ie41].push_back(make_pair(it, ib));
+        minmax_[ie1][ie41].push_back(std::make_pair(it, ib));
     }
-    } 
+    }
     cout << "# minimax table has been created.\n";
 }
 
 void FBMC::loadDOSmax(std::string band_filename) {
-    string dosmax_filename = TABLE_DIRECTORY_NAME_ + "DOSmax_" + band_filename;
-    ifstream fin_dosmax(dosmax_filename, ios::in);
+    std::string dosmax_filename = TABLE_DIRECTORY_NAME_
+                                  + "DOSmax_" + band_filename;
+    std::ifstream fin_dosmax(dosmax_filename, std::ios::in);
 
     if (fin_dosmax.is_open()) {
         cout << "# File: " + dosmax_filename + " is found.\n";
-        for (int ie = 0; ie < NE; ++ie) {
+        for (int ie = 0; ie < SIZE_OF_DOSMAX_TABLE_; ++ie) {
             int ie_scan;
-	    double tmp;
+            double tmp;
             fin_dosmax >> ie_scan >> tmp;
-	    if (ie_scan == ie) {
+            if (ie_scan == ie) {
                 dosmax_[ie] = tmp;
-	    }
-	    else {
+            } else {
                 cout << "ERROR in making dosmax table.\n";
                 exit(EXIT_FAILURE);
-	    }
+            }
         }
         fin_dosmax.close();
-    }
-    else {
+    } else {
         cout << "# Not found dosmax table.\n";
         cout << "# Now, making dosmax table. Please wait for a while.\n";
 
         makeDOSmaxTable();
-        ofstream fout_dosmax(dosmax_filename, ios::out);
-        for (int ie = 0; ie < NE; ++ie) {
+        std::ofstream fout_dosmax(dosmax_filename, std::ios::out);
+        for (int ie = 0; ie < SIZE_OF_DOSMAX_TABLE_; ++ie) {
             fout_dosmax << ie << ' ' << dosmax_[ie] << endl;
         }
         fout_dosmax.close();
@@ -100,30 +103,36 @@ void FBMC::loadDOSmax(std::string band_filename) {
 }
 
 void FBMC::makeDOSmaxTable(void) {
-
     const int NB = carrier_.getNumberOfBands();
     const int NT = carrier_.getNumberOfTetrahedra();
 
-    for (int ie = 0; ie < NE; ++ie) {
+    for (int ie = 0; ie < SIZE_OF_DOSMAX_TABLE_; ++ie) {
         const double energy_min = ie * DELTAE_DOSMAX_;
         const double energy_max = energy_min + DELTAE_DOSMAX_;
 
         double dosmax_tmp = 0.0;
         for (int ib = 0; ib < NB; ++ib) {
         for (int it = 0; it < NT; ++it) {
-            array<double, 4> e = carrier_.getTetrahedronVertexEnergies(it, ib);
+            std::array<double, 4> e
+                 = carrier_.getTetrahedronVertexEnergies(it, ib);
 
             if (e[0] < energy_max && e[3] > energy_min) {
-                const double e_scan_min = (energy_min > e[0]) ? energy_min : e[0];
-                const double e_scan_max = (energy_max < e[3]) ? energy_max : e[3];
+                const double e_scan_min =
+                     (energy_min > e[0]) ? energy_min : e[0];
+                const double e_scan_max =
+                    (energy_max < e[3]) ? energy_max : e[3];
                 if (e_scan_max - e_scan_min < 1.0e-9) {
-                    // Energy is constant in this tetrahedron, and thus dosmax = 0
+                    // Energy is almost constant in this tetrahedron,
+                    // and thus dosmax = 0
                     break;
-		}
+                }
 
-		const double delta_e = (e_scan_max - e_scan_min) * EPS_ESCAN_;
-                for (double e_scan = e_scan_min; e_scan < e_scan_max; e_scan += delta_e) {
-                     const double dosmax_interval = carrier_.getTetrahedronDOS(it, ib, e_scan);
+                const double delta_e = (e_scan_max - e_scan_min) * EPS_ESCAN_;
+                for (double e_scan = e_scan_min;
+                     e_scan < e_scan_max;
+                     e_scan += delta_e) {
+                     const double dosmax_interval =
+                         carrier_.getTetrahedronDOS(it, ib, e_scan);
                     // Update dosmax_tmp
                     if (dosmax_interval > dosmax_tmp) {
                             dosmax_tmp = dosmax_interval;

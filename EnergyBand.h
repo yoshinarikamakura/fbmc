@@ -1,3 +1,4 @@
+// Copyright (c) 2025 yoshinarikamakura
 #pragma once
 
 #include "Definitions.h"
@@ -7,9 +8,7 @@
 #include <vector>
 
 class EnergyBand {
-
-public:
-
+ public:
 /* Constructor
  *
  * === Input ===
@@ -43,17 +42,26 @@ public:
     inline double getFactorForDensityOfStates() const { return FACTOR_DOS; }
     inline double getMinimumEnergy() const { return emin_; }
     inline double getMaximumEnergy() const { return emax_; }
-    inline std::vector<double> getMaximumEnergyPerBand() const { return emax_per_band; }
+    inline std::vector<double> getMaximumEnergyPerBand() const {
+        return emax_per_band;
+    }
     inline Vector3 getMaximumWaveVector() const { return vkmax; }
 
-    State getStateInTetrahedron(const double energy, const int nt, const int nb, const Vector3 r, const double charge);
+    State getStateInTetrahedron(const double energy,
+                                const int nt,
+                                const int nb,
+                                const Vector3 r,
+                                const double charge);
+
     double getTetrahedronDOS(const int nt, const int n, const double e);
-    std::array<double, 4> getTetrahedronVertexEnergies(const int nt, const int nb);
+
+    std::array<double, 4> getTetrahedronVertexEnergies(const int nt,
+                                                       const int nb);
+
     Vector3 getWaveVectorDifference(const State state, const int it);
 
-private:
+ private:
     std::mt19937& mt;
-//    const std::string TABLE_DIRECTORY_NAME = "./TABLE/";
     double K_UNIT;
 
     double emin_, emax_;
@@ -64,7 +72,7 @@ private:
     Vector3 FACTOR_GROUP_VELOCITY;
 
 // Lattice Constant (m)
-    double LATTICE_CONSTANT; 
+    double LATTICE_CONSTANT;
 
 // Number of devisions from Gamma-point to X-point in k-space
     int NK;
