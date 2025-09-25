@@ -53,6 +53,7 @@ class EnergyBand {
                                 const Vector3 r,
                                 const double charge);
 
+    double getDOS(const double energy);
     double getTetrahedronDOS(const int nt, const int n, const double e);
 
     std::array<double, 4> getTetrahedronVertexEnergies(const int nt,
@@ -111,6 +112,5 @@ class EnergyBand {
 // Energy (eV)
     std::vector<std::vector<std::vector<std::vector<double>>>> grid_energy;
 
-    double getDOS(const double energy);
     void loadBandFile(std::string band_filename);
 };

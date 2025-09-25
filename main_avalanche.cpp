@@ -137,6 +137,9 @@ int main(int argc, char*argv[]) {
               TEMPERATURE,
               sharedRng);
 
+    std::vector<double> dos_electron = electron.getDOSTable();
+    std::vector<double> dos_hole = hole.getDOSTable();
+
     const int NUMBER_OF_SAMPLES = 32;
 
     int n_broken = 0;
@@ -204,6 +207,7 @@ int main(int argc, char*argv[]) {
                     state = electron.flightFree(TIMESTEP, efield, state);
                     state = electron.scatter(TIMESTEP,
                                              state,
+                                             dos_hole,
                                              scattering_mechanism,
                                              eh_pair_energies);
                 } else {
@@ -212,6 +216,7 @@ int main(int argc, char*argv[]) {
                     state = hole.flightFree(TIMESTEP, efield, state);
                     state = hole.scatter(TIMESTEP,
                                          state,
+                                         dos_electron,
                                          scattering_mechanism,
                                          eh_pair_energies);
                 }

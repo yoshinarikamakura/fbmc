@@ -42,6 +42,7 @@ State FBMC::flightFree(const double dt,
 
 State FBMC::scatter(const double dt,
                     State initial_state,
+                    const std::vector<double> dos_another_band,
                     int& scattering_mechanism,
                     std::array<double, 2>& eh_pair_energies) {
     std::uniform_real_distribution<double> urand(0.0, 1.0);
@@ -77,6 +78,7 @@ State FBMC::scatter(const double dt,
     sum += getImpactIonizationRate(initial_state);
     if (sum > rgamma) {
         State final_state = selectStateAfterImpactIonization(initial_state,
+                                                             dos_another_band,
                                                              eh_pair_energies);
         scattering_mechanism = IMPACT_IONIZATION;
         return final_state;

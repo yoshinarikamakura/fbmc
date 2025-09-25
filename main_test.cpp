@@ -30,6 +30,9 @@ int main() {
               TEMPERATURE,
               sharedRng);
 
+    std::vector<double> dos_electron = electron.getDOSTable();
+    std::vector<double> dos_hole = hole.getDOSTable();
+
     efield = Vector3(-1.0e5, 0.0, 0.0);  // (V/m)
 
     std::cout << "# Electric Field (V/m), "
@@ -54,6 +57,7 @@ int main() {
             std::array<double, 2> eh_pair_energies;
             state = electron.scatter(TIMESTEP,
                                      state,
+                                     dos_hole,
                                      scattering_mechanism,
                                      eh_pair_energies);
 
@@ -98,6 +102,7 @@ int main() {
             std::array<double, 2> eh_pair_energies;
             state = hole.scatter(TIMESTEP,
                                  state,
+                                 dos_electron,
                                  scattering_mechanism,
                                  eh_pair_energies);
 

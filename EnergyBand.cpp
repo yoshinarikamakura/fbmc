@@ -427,7 +427,9 @@ double EnergyBand::getDOS(const double e) {
         }
     }
 
-    return sum * FACTOR_DOS;
+// If FACTOR_DOS is multiplied, DOS in units of [1/eV/m/m/m] is returned
+//    return sum * FACTOR_DOS;
+    return sum;
 }
 
 

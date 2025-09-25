@@ -76,6 +76,8 @@ class FBMC {
 // === Input ===
 // double dt ....Time step (s)
 // State initial_state ....Carrier state before scattering
+// std::vector<double dos_another_band
+//                                ....DOS table of opposite polarity carrier
 //
 //  === Output ===
 // State scatter ....Carrier state after scattering
@@ -87,6 +89,7 @@ class FBMC {
 //
     State scatter(const double dt,
                   const State initial_state,
+                  const std::vector<double> dos_another_band,
                   int& scattering_mechanism,
                   std::array<double, 2>& eh_pair_energies);
 
@@ -109,6 +112,10 @@ class FBMC {
         return phonon_.getNumberOfBands();
     }
 
+    inline std::vector<double> getDOSTable(void) {
+        return dos_;
+    }
+
 
 
  private:
@@ -116,6 +123,9 @@ class FBMC {
 
 // Directory name of input files
     const std::string TABLE_DIRECTORY_NAME_ = "./inputs/";
+
+// Energy interval for DOS table (eV)
+    static constexpr double DELTAE_DOS_ = 0.01;
 
 // Energy interval for DOSMAX table (eV)
     static constexpr double DELTAE_DOSMAX_ = 0.001;
@@ -180,10 +190,14 @@ class FBMC {
 
 // ====== Internal Data (Objects) ======
     std::mt19937& mt_;
+
     EnergyBand carrier_;
+
     EnergyBand phonon_;
 
 // ====== Internal Data ======
+// Table of DOS
+    std::vector<double> dos_;
 
 // Table of DOSmax
     std::vector<double> dosmax_;
@@ -200,9 +214,29 @@ class FBMC {
 // Thermal energy (eV)
     double THERMAL_ENERGY_;
 
+// Inverse of thermal energy (1/eV)
+    double BETA_;
+
+//
+    double FACTOR_PHONON_SCATTERING_RATE_;
+
+//
+    double ENERGY_GEOMETRIC_RATIO_;
+
+//
+    std::vector<double> hwmax_;
+
+//
+    int SIZE_OF_DOS_TABLE_;
+
+//
+    int SIZE_OF_DOSMAX_TABLE_;
+
 // ====== Internal methods ======
     void constructDOSTables(std::string band_filename);
+    void loadDOS(std::string band_filename);
     void loadDOSmax(std::string band_filename);
+    void makeDOSTable(void);
     void makeDOSmaxTable(void);
 
     void loadMaterialParameter(std::string param_filename);
@@ -211,12 +245,10 @@ class FBMC {
                                          std::string band_filename,
                                          double temperature);
 
- public:
     double getPhononScatteringRate(const int eta,
                                    const bool isAbsorption,
                                    const State initial_state);
 
- private:
     State selectStateAfterPhononScattering(const int eta,
                                            const bool isAbsorption,
                                            const State initial_state);
@@ -232,8 +264,10 @@ class FBMC {
     std::vector<std::vector<double>> getMaxToyMatrixElement(const double eimax);
 
     double getImpactIonizationRate(const State initial_state);
+
     State selectStateAfterImpactIonization(const State initial_state,
-                                       std::array<double, 2>& eh_pair_energies);
+                                    const std::vector<double> dos_another_band,
+                                    std::array<double, 2>& eh_pair_energies);
 
     // Table of electron-phonon scattering rate (1/s)
     std::vector<std::vector<double>> phonon_absorption_scattering_rate_table;
@@ -241,10 +275,4 @@ class FBMC {
 
     // Table of Maximum Matrix Elements of Electron-Phonon Scattering (???)
     std::vector<std::vector<double>> matrix_element_max;
-
-    double BETA_;
-    double FACTOR_PHONON_SCATTERING_RATE_;
-    double ENERGY_GEOMETRIC_RATIO_;
-    std::vector<double> hwmax_;
-    int SIZE_OF_DOSMAX_TABLE_;
 };

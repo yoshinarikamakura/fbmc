@@ -16,8 +16,16 @@ void FBMC::constructDOSTables(std::string band_filename) {
         exit(EXIT_FAILURE);
     }
 
-// Make a table of maximum DOS at a given energy
     const double emax = carrier_.getMaximumEnergy();
+
+// Make a table of DOS
+    SIZE_OF_DOS_TABLE_ = static_cast<int>(emax / DELTAE_DOS_);
+    cout << "# Size of dos table = " << SIZE_OF_DOS_TABLE_ << endl;
+    dos_.resize(SIZE_OF_DOS_TABLE_);
+    loadDOS(band_filename);
+    cout << "# dos_ table has been loaded.\n";
+
+// Make a table of maximum DOS at a given energy
     SIZE_OF_DOSMAX_TABLE_ = static_cast<int>(emax / DELTAE_DOSMAX_);
     cout << "# Size of dosmax table = " << SIZE_OF_DOSMAX_TABLE_ << endl;
     dosmax_.resize(SIZE_OF_DOSMAX_TABLE_);
@@ -70,6 +78,38 @@ void FBMC::constructDOSTables(std::string band_filename) {
     cout << "# minimax table has been created.\n";
 }
 
+void FBMC::loadDOS(std::string band_filename) {
+    std::string dos_filename = TABLE_DIRECTORY_NAME_
+                                  + "DOS_" + band_filename;
+    std::ifstream fin_dos(dos_filename, std::ios::in);
+
+    if (fin_dos.is_open()) {
+        cout << "# File: " + dos_filename + " is found.\n";
+        for (int ie = 0; ie < SIZE_OF_DOS_TABLE_; ++ie) {
+            int ie_scan;
+            double tmp;
+            fin_dos >> ie_scan >> tmp;
+            if (ie_scan == ie) {
+                dos_[ie] = tmp;
+            } else {
+                cout << "ERROR in making dos table.\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        fin_dos.close();
+    } else {
+        cout << "# Not found dos table.\n";
+        cout << "# Now, making dos table. Please wait for a while.\n";
+
+        makeDOSTable();
+        std::ofstream fout_dos(dos_filename, std::ios::out);
+        for (int ie = 0; ie < SIZE_OF_DOS_TABLE_; ++ie) {
+            fout_dos << ie << ' ' << dos_[ie] << endl;
+        }
+        fout_dos.close();
+    }
+}
+
 void FBMC::loadDOSmax(std::string band_filename) {
     std::string dosmax_filename = TABLE_DIRECTORY_NAME_
                                   + "DOSmax_" + band_filename;
@@ -99,6 +139,13 @@ void FBMC::loadDOSmax(std::string band_filename) {
             fout_dosmax << ie << ' ' << dosmax_[ie] << endl;
         }
         fout_dosmax.close();
+    }
+}
+
+void FBMC::makeDOSTable(void) {
+    for (int ie = 0; ie < SIZE_OF_DOS_TABLE_; ++ie) {
+        const double energy = ie * DELTAE_DOS_;
+        dos_[ie] = carrier_.getDOS(energy);
     }
 }
 
