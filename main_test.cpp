@@ -6,6 +6,7 @@
 #include <string>
 #include "Definitions.h"
 #include "FBMC.h"
+using namespace std;
 
 int main() {
     std::mt19937 sharedRng(42);
